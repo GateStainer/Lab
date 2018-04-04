@@ -1,123 +1,154 @@
 %{
-//#include "syntax.tab.h"
+	#include "syntax.tab.h"
+	#include "TreeNode.h"
+	/*definitions of manifest constants
+	SEMI, COMMA, ASSIGNOP, PLUS, MINUS, STAR, DIV,RELOP,
+	AND, OR, NOT, LP, RP, LB, RB, LC, RC, STRUCT, RETURN,
+	IF, ELSE, WHILE, INT, FLOAT, TYPE, DOT, ID
+	*/
+	int mylineno = 1;
+	extern bool error_flag;
+	int yycolumn = 1;
+	#define YY_USER_ACTION \
+			yylloc.first_line = yylloc.last_line = mylineno; \
+			yylloc.first_column = yycolumn; \
+			yylloc.last_column = yycolumn + yyleng - 1; \
+			yycolumn += yyleng;
+	#define DEBUG 0
 %}
 
 /* regular definitions */
 %option noyywrap
-%option yylineno
 delim	[ \t\n]
 ws	{delim}+
 letter	[_A-Za-z]
 digit	[0-9]
 INT	([1-9]{digit}*)|[0]
-FLOAT	{INT}\.{digit}+
-EFLOAT	(({digit}+\.)|(\.{digit}+)|({digit}+\.{digit}+))[Ee][\+-]?[0-9]+
+FLOAT	({INT}\.{digit}+)|((({digit}+\.)|(\.{digit}+)|({digit}+\.{digit}+))[Ee][\+-]?[0-9]+) 
+RELOP	>|<|(<=)|(>=)|(==)|(!=)
 ID	{letter}({letter}|{digit})*
 
 %%
 [ \t\r]	{}
-\n	{ yylineno++; }
-";"	{ printf("SEMI\n");
-	 //return SEMI;
+[\n]	{ mylineno++ ; yycolumn = 1; }	
+";"	{ //printf("SEMI\n");
+	 yylval.node = createTreeNode("SEMI", mylineno, true);
+	 return SEMI;
 	 }
-","	{ printf("COMMA\n");
-	 //return COMMA;
+","	{ //printf("COMMA\n");
+	 yylval.node = createTreeNode("COMMA", mylineno, true);
+	 return COMMA;
 	 }
-"="	{ printf("ASSIGNOP\n");
-	//return ASSIGNOP;
+"="	{ //printf("ASSIGNOP\n");
+ 	yylval.node = createTreeNode("ASSIGNOP", mylineno, true);
+	return ASSIGNOP;
 	 }
-"+"	{ printf("PLUS\n");
-	 //return PLUS;
+"+"	{ //printf("PLUS\n");
+	 yylval.node = createTreeNode("PLUS", mylineno, true);
+	 return PLUS;
 	 }
-"-"	{ printf("MINUS\n");
-	 //return MINUS;
+"-"	{ //printf("MINUS\n");
+	 yylval.node = createTreeNode("MINUS", mylineno, true);
+	 return MINUS;
 	 }
-"*"	{ printf("STAR\n");
-	//return STAR;
+"*"	{ //printf("STAR\n");
+	 yylval.node = createTreeNode("STAR", mylineno, true);
+	 return STAR;
 	 }
-"/"	{ printf("DIV\n");
-	//return DIV;
+"/"	{ //printf("DIV\n");
+	 yylval.node = createTreeNode("DIV", mylineno, true);
+	 return DIV;
 	 }
-"<"	{ printf("RELOP\n");
-	//yylval = LT; return RELOP;
+{RELOP}	{ //printf("RELOP\n");
+	 yylval.node = createTreeNode("RELOP", mylineno, true);
+	 strcpy(yylval.node->data, yytext);
+	 return RELOP;
 	 }
-"<="	{ printf("Relop\n");
-	//yylval = LE; return RELOP;
+"&&"	{ //printf("AND\n");
+	 yylval.node = createTreeNode("AND", mylineno, true);
+	 return AND;
 	 }
-"=="	{ printf("RELOP\n");
-	//yylval = EQ; return RELOP;
+"||"	{ //printf("OR\n");
+	 yylval.node = createTreeNode("OR", mylineno, true);
+	 return OR;
 	 }
-">"	{ printf("RELOP\n");
-	//yylval = GT; return RELOP;
+"!"	{ //printf("NOT\n");
+	 yylval.node = createTreeNode("NOT", mylineno, true);
+	 return NOT;
 	 }
-">="	{ printf("RELOP\n");
-	//yylval = GE; return RELOP;
+"("	{ //printf("LP\n");
+	 yylval.node = createTreeNode("LP", mylineno, true);
+	 return LP;
 	 }
-"!="	{ printf("RELOP\n");
-	//yylval = NE; return RELOP;
+")"	{ //printf("RP\n");
+	 yylval.node = createTreeNode("RP", mylineno, true);
+	 return RP;
 	 }
-"&&"	{ printf("AND\n");
-	//return AND;
+"["	{ //printf("LB\n");
+	 yylval.node = createTreeNode("LB", mylineno, true);
+	 return LB;
 	 }
-"||"	{ printf("OR\n");
-	//return OR;
+"]"	{ //printf("RB\n");
+	 yylval.node = createTreeNode("RB", mylineno, true);
+	 return RB;
 	 }
-"."	{ printf("DOT\n");
-	//return DOT;
+"{"	{ //printf("LC\n");
+	 yylval.node = createTreeNode("LC", mylineno, true);
+	 return LC;
 	 }
-"!"	{ printf("NOT\n");
-	//return NOT;
+"}"	{ //printf("RC\n");
+	 yylval.node = createTreeNode("RC", mylineno, true);
+	 return RC;
 	 }
-"("	{ printf("LP\n");
-	//return LP;
-	 }
-")"	{ printf("RP\n");
-	//return RP;
-	 }
-"["	{ printf("LB\n");
-	//return LB;
-	 }
-"]"	{ printf("RB\n");
-	//return RB;
-	 }
-"{"	{ printf("LC\n");
-	//return LC;
-	 }
-"}"	{ printf("RC\n");
-	//return RC;
-	 }
-"struct"	{ printf("STRUCT\n");
-		//return STRUCT;
+"struct"	{ //printf("STRUCT\n");
+		 yylval.node = createTreeNode("STRUCT", mylineno, true);
+		 return STRUCT;
 		 }
-"return"	{ printf("RETURN\n");
-		//return RETURN;
+"return"	{ //printf("RETURN\n");
+		 yylval.node = createTreeNode("RETURN", mylineno, true);
+		 return RETURN;
 		 }
-"if"	{ printf("IF\n");
-	//return IF;
+"if"	{ //printf("IF\n");
+	 yylval.node = createTreeNode("IF", mylineno, true);
+	 return IF;
 	 }
-"else"	{ printf("ELSE\n");
-	//return ELSE;
+"else"	{ //printf("ELSE\n");
+	 yylval.node = createTreeNode("ELSE", mylineno, true);
+	 return ELSE;
 	 }
-"while"	{ printf("WHILE\n");
-	//return WHILE;
+"while"	{ //printf("WHILE\n");
+	 yylval.node = createTreeNode("WHILE", mylineno, true);
+	 return WHILE;
 	 }
-{INT}	{ printf("INT\n"); 
-	 //return INT;
+{INT}	{ //printf("INT\n"); 
+	 yylval.node = createTreeNode("INT", mylineno, true);
+	 strcpy(yylval.node->data, yytext);
+	 return INT;
 	 }
-{FLOAT}	{ printf("FLOAT\n");
-	//yylval = atof(yytext); return FLOAT;
+{FLOAT}	{ //printf("FLOAT\n");
+ 	 yylval.node = createTreeNode("FLOAT", mylineno, true);
+ 	 strcpy(yylval.node->data, yytext);
+	 return FLOAT;
 	 }
-{EFLOAT}	{printf("EFLOAT\n");
+"int"	{ //printf("TYPE\n");
+	 yylval.node = createTreeNode("TYPE", mylineno, true);
+	 strcpy(yylval.node->data, "INT");
+	 return TYPE;
 	 }
-"int"	{ printf("TYPE\n");
-	//return TYPE;
+"float"	{ //printf("TYPE\n");
+	 yylval.node = createTreeNode("TYPE", mylineno, true);
+	 strcpy(yylval.node->data, "FLOAT");
+	 return TYPE;
 	 }
-"float"	{ printf("TYPE\n");
-	//return TYPE;
+"."	{ //printf("DOT\n");
+	 yylval.node = createTreeNode("DOT", mylineno, true);
+	 return DOT;
 	 }
-{ID}	{ printf("ID\n");
-	//return ID;
+{ID}	{ //printf("ID\n");
+	 yylval.node = createTreeNode("ID", mylineno, true);
+	 strcpy(yylval.node->data, yytext);
+	 return ID;
 	 }
-.	{ printf("ERROR type A at Line %d: Mysterious characters \'%s\'\n", yylineno, yytext); }
+.	{ error_flag = true; printf("ERROR type A at Line %d: Mysterious characters \'%s\'\n", mylineno, yytext); }
 
 %%
