@@ -24,7 +24,7 @@ ws	{delim}+
 letter	[_A-Za-z]
 digit	[0-9]
 INT	([1-9]{digit}*)|[0]
-FLOAT	({INT}\.{digit}+)|((({digit}+\.)|(\.{digit}+)|({digit}+\.{digit}+))[Ee][\+-]?[0-9]+) 
+FLOAT	({INT}\.{digit}+)|((({digit}+\.)|(\.{digit}+)|({digit}+\.{digit}+))[Ee][\+-]?[0-9]+)
 RELOP	>|<|(<=)|(>=)|(==)|(!=)
 ID	{letter}({letter}|{digit})*
 
