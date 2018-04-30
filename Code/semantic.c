@@ -33,7 +33,178 @@ void visitExtDef(TreeNode* root)
 {
 	TreeNode* child = root->firstChild;
 	TypeP specifier = visitSpecifier(child);
+	if(specifier == NULL)
+		return;
+	child = child->next;
+	//ExtDef --> Specifier ExtDecList SEMI
+	if(strcmp(child->name, "ExtDecList") == 0)
+	{
+		visitExtDecList(child, specifier);
+	}
+	//ExtDef --> Specifier SEMI
+	else if(strcmp(child->name, "SEMI") == 0)
+	{
+		return;
+	}
+	//ExtDef --> Specifier FunDec CompSt
+	else if(strcmp(child->name, "FunDec") == 0)
+	{
+		TypeP type = visitFunDec(child, specifier);
+		if(type == NULL)
+			return;
+		TableNode* temp_node = searchSymbolTable(type->u.structure->name);
+		if(temp_node != NULL)
+		{
+			printf("Error type 4 at Line %d: Redefined function \"%s\".\n", child->lineno, temp_node->name);
+			return;
+		}
+		else
+		{
+			insertSymbolTable(type->u.structure->name, type);
+			child = child->next;
+			visitCompSt(child, specifier);
+		}
 
+	}
+	else
+	{
+		printf("Error in visitExtDef\n");
+		exit(-1);
+	}
+
+}
+
+TypeP visitFunDec(TreeNode* root, TypeP lasttype)
+{
+	TypeP type = (TypeP)malloc(sizeof(Type_));
+	TreeNode* child = root->firstChild;
+	type->kind = FUNCTION;
+	type->u.structure = (FieldListP)malloc(sizeof(FieldList_));
+	type->u.structure->name = child->data;
+	type->u.structure->type = lasttype;
+	FieldListP field = type->u.structure;
+	child = child->next->next;
+	//FunDec --> ID LP RP
+	if(strcmp(child->name, "RP") == 0)
+	{
+		field->tail = NULL;
+	}
+	//FunDec --> ID LP VarList RP
+	else
+	{
+		for(child = child->firstChild; ; )
+		{
+			TypeP point = visitSpecifier(child->firstChild);
+			if(point != NULL)
+			{
+				FieldListP tempfield = visitVarDec(child->firstChild->next, point, false);
+				field->tail = tempfield;
+				field = tempfield;
+			}
+			child = child->next;
+			if(child == NULL)
+				break;
+			else
+				child = child->next->firstChild;
+		}
+	}
+	return type;
+}
+
+//CompSt --> LC DefList StmtList RC
+void visitCompSt(TreeNode* root, TypeP returntype)
+{
+	TreeNode* child = root->firstChild->next;
+	FieldListP head = visitDefList(child, false);
+	child = child->next;
+	while(true)
+	{
+		if(strcmp(child->name, "Empty") == 0)
+			break;
+		else
+		{
+			child = child->firstChild;
+			visitStmt(child, returntype);
+			child = child->next;
+		}
+	}
+}
+
+void visitStmt(TreeNode* root, TypeP returntype)
+{
+	TreeNode* child = root->firstChild;
+	//Stmt --> Exp SEMI
+	if(strcmp(child->name, "Exp") == 0)
+		visitExp(child);
+	//Stmt --> CompSt
+	else if(strcmp(child->name, "CompSt") == 0)
+	{
+		visitCompSt(child, returntype);
+	}
+	//Stmt --> RETURN Exp SEMI
+	else if(strcmp(child->name, "RETURN") == 0)
+	{
+		TypeP exptype = visitExp(child->next);
+		if(sameType(returntype, exptype) == false)
+		{
+			printf("Error type 8 at Line %d: Type mismatched for return.\n", child->lineno);
+			return;
+		}
+	}
+	//Stmt --> IF LP Exp RP Stmt | IF LP Exp RP Stmt ELSE Stmt
+	else if(strcmp(child->name, "IF") == 0)
+	{
+		child = child->next->next;
+		TypeP point = visitExp(child);
+		if(point==NULL)
+			return;
+		if(!(point->kind==BASIC && point->u.basic==INT))
+		{
+			printf("Error type 7 at Line %d: Type mismatched for if.\n", child->lineno);
+			return;
+		}
+		child = child->next->next;
+		visitStmt(child, returntype);
+		child = child->next;
+		if(child != NULL)
+			visitStmt(child, returntype);
+	}
+	//Stmt --> WHILE LP Exp RP Stmt
+	else if(strcmp(child->name, "WHILE") == 0)
+	{
+		child = child->next->next;
+		TypeP point = visitExp(child);
+		if(point==NULL)
+			return;
+		if(!(point->kind==BASIC && point->u.basic==INT))
+		{
+			printf("Error type 7 at Line %d: Type mismatched for while.\n",child->lineno);
+			return;
+		}
+		child = child->next->next;
+		visitStmt(child, returntype);
+	}
+	else
+	{
+		printf("Error in visitStmt\n");
+		exit(-1);
+	}
+}
+
+void visitExtDecList(TreeNode* root, TypeP type)
+{
+	TreeNode* child = root->firstChild;
+	while(true)
+	{
+		visitVarDec(child, type, false);
+		child = child->next;
+		if(child == NULL)
+			break;
+		else
+		{
+			child = child->next->firstChild;
+		}
+	}
 }
 
 TypeP visitSpecifier(TreeNode* root)
@@ -74,7 +245,7 @@ TypeP visitSpecifier(TreeNode* root)
 			//DefList --> Def DefList
 			if(strcmp(child->name, "Empty") != 0)
 			{
-				visitDefList(child, true, head);
+				head = visitDefList(child, true);
 			}
 			TypeP type = (TypeP)malloc(sizeof(Type_));
 			type->kind = STRUCTURE;
@@ -118,29 +289,29 @@ TypeP visitSpecifier(TreeNode* root)
 }
 
 //DefList --> Def DefList
-void visitDefList(TreeNode* root, bool inStruct, FieldListP head)
+FieldListP visitDefList(TreeNode* root, bool inStruct)
 {
 	if(strcmp(root->name, "Empty") == 0)
-		return;
+		return NULL;
+	FieldListP head = NULL;
 	TreeNode* child = root->firstChild;
 	FieldListP field = visitDef(child, inStruct);
-	if(head == NULL)
-	{
-		head = field;
-	}
-	else
-	{
-		FieldListP temp_head = head;
-		FieldListP temp_tail = head;
-		for(; temp_head!=NULL; )
-		{
-			temp_tail = temp_head;
-			temp_head = temp_head->tail;
-		}
-		temp_tail->tail = field;
-	}
+	head = field;
+	
 	child = child->next;
-	visitDefList(child, inStruct, head);
+	FieldListP nexthead = visitDefList(child, inStruct);
+	FieldListP temp_head = head;
+	FieldListP temp_tail = head;
+	for(; temp_head!=NULL; )
+	{
+		temp_tail = temp_head;
+		temp_head = temp_head->tail;
+	}
+	if(temp_tail == NULL)
+		head = nexthead;
+	else
+		temp_tail->tail = nexthead;
+	return head;
 }
 
 //Def --> Specifier DecList SEMI
@@ -168,7 +339,7 @@ FieldListP visitDef(TreeNode* root, bool inStruct)
 			else
 			{
 				TypeP exptype = visitExp(varDec->next->next);
-				if(exptype != NULL && sameType(type, exptype) == false)
+				if(sameType(type, exptype) == false)
 				{
 					printf("Error type 5 at Line %d: Type mismatched for assignment.\n", varDec->lineno);
 				}
@@ -231,37 +402,64 @@ TypeP visitExp(TreeNode* root)
 	TreeNode* child = root->firstChild;
 	if(strcmp(child->name, "Exp") == 0)
 	{
+		//Exp --> Exp ASSIGNOP Exp
 		if(strcmp(child->next->name, "ASSIGNOP") == 0)
 		{
-
+			TreeNode* node = child->firstChild;
+			if(!((strcmp(node->name, "ID")==0 && node->next == NULL) || (strcmp(node->name, "Exp")==0 && strcmp(node->next->name, "DOT")==0) \
+				|| (strcmp(node->name, "Exp")==0 && strcmp(node->next->name, "LB")==0 && strcmp(node->next->next->name, "Exp")==0)))
+			{
+				printf("Error type 6 at Line %d: The left-hand side of an assignment must be a variable.\n", child->lineno);
+				return NULL;
+			}
+			TypeP type1 = visitExp(child);
+			TypeP type2 = visitExp(child->next->next);
+			if(sameType(type1,type2) == false)
+			{
+				printf("Error type 5 at Line %d: Type mismatched for assignment.\n", child->lineno);
+				return NULL;
+			}
+			return type1;
 		}
-		else if(strcmp(child->next->name, "AND") == 0)
+		//Exp --> Exp AND Exp | Exp OR Exp
+		else if(strcmp(child->next->name, "AND") == 0 || strcmp(child->next->name, "OR") == 0)
 		{
-
+			TypeP type1 = visitExp(child);
+			TypeP type2 = visitExp(child->next->next);
+			if(!(sameType(type1, type2) && type1->kind==BASIC && type1->u.basic==INT))
+			{
+				printf("Error type 7 at Line %d: Type mismatched for operands.\n", child->lineno);
+				return NULL;
+			}
+			return type1;
 		}
-		else if(strcmp(child->next->name, "OR") == 0)
-		{
-
-		}
+		//Exp --> Exp RELOP Exp
 		else if(strcmp(child->next->name, "RELOP") == 0)
 		{
-
+			TypeP type1 = visitExp(child);
+			TypeP type2 = visitExp(child->next->next);
+			if(!(sameType(type1, type2) && type1->kind==BASIC && (type1->u.basic==INT || type1->u.basic==FLOAT)))
+			{
+				printf("Error type 7 at Line %d: Type mismatched for operands.\n", child->lineno);
+				return NULL;
+			}
+			TypeP newtype = (TypeP)malloc(sizeof(Type_));
+			newtype->kind = BASIC;
+			newtype->u.basic = INT;
+			return newtype;
 		}
-		else if(strcmp(child->next->name, "PLUS") == 0)
+		//Exp --> Exp PLUS Exp | Exp MINUS Exp | Exp STAR Exp | Exp DIV Exp
+		else if(strcmp(child->next->name, "PLUS") == 0 || strcmp(child->next->name, "MINUS") == 0 \
+			|| strcmp(child->next->name, "STAR") == 0 || strcmp(child->next->name, "DIV") == 0)
 		{
-
-		}
-		else if(strcmp(child->next->name, "MINUS") == 0)
-		{
-
-		}
-		else if(strcmp(child->next->name, "STAR") == 0)
-		{
-
-		}
-		else if(strcmp(child->next->name, "DIV") == 0)
-		{
-
+			TypeP type1 = visitExp(child);
+			TypeP type2 = visitExp(child->next->next);
+			if(!(sameType(type1, type2) && type1->kind==BASIC && (type1->u.basic==INT || type1->u.basic==FLOAT)))
+			{
+				printf("Error type 7 at Line %d: Type mismatched for operands.\n", child->lineno);
+				return NULL;
+			}
+			return type1;
 		}
 		//Exp --> Exp LB Exp RB
 		else if(strcmp(child->next->name, "LB") == 0)
@@ -330,7 +528,7 @@ TypeP visitExp(TreeNode* root)
 	{
 		if(strcmp(child->next->name, "Exp") == 0)
 		{
-
+			return visitExp(child->next);
 		}
 		else
 		{
@@ -342,7 +540,15 @@ TypeP visitExp(TreeNode* root)
 	{
 		if(strcmp(child->next->name, "Exp") == 0)
 		{
-
+			TypeP temp_type = visitExp(child->next);
+			if(temp_type==NULL)
+				return NULL;
+			if(temp_type->kind != BASIC)
+			{
+				printf("Error type 7 at Line %d: Type mismatched for operands.\n", child->lineno);
+				return NULL;
+			}
+			return temp_type;
 		}
 		else
 		{
@@ -354,7 +560,18 @@ TypeP visitExp(TreeNode* root)
 	{
 		if(strcmp(child->next->name, "Exp") == 0)
 		{
-
+			TypeP temp_type = visitExp(child->next);
+			if(temp_type==NULL)
+				return NULL;
+			if(temp_type->kind != BASIC || temp_type->u.basic != INT)
+			{
+				printf("Error type 7 at Line %d: Type mismatched for operands.\n", child->lineno);
+				return NULL;
+			}
+			TypeP newtype = (TypeP)malloc(sizeof(Type_));
+			newtype->kind = BASIC;
+			newtype->u.basic = INT;
+			return newtype;
 		}
 		else
 		{
@@ -362,17 +579,104 @@ TypeP visitExp(TreeNode* root)
 			exit(-1);
 		}
 	}
-	else if(strcmp(child->name, "ID" == 0)
+	else if(strcmp(child->name, "ID") == 0)
 	{
+		//Exp --> ID LP RP | ID LP Args RP
+		if(child->next != NULL)
+		{
+			TableNode* temp_node = searchSymbolTable(child->data);
+			if(temp_node == NULL)
+			{
+				printf("Error type 2 at Line %d: Undefined function \"%s\".\n", child->lineno, child->data);
+				return NULL;
+			}
+			else if(temp_node->type->kind != FUNCTION)
+			{
+				printf("Error type 11 at Line %d: \"%s\" is not a function.\n", child->lineno, child->data);
+				return NULL;
+			}
+			else
+			{
+				TypeP temp_type = temp_node->type;
+				//Exp --> ID LP RP
+				if(strcmp(child->next->next->name, "RP")==0)
+				{
+					if(temp_type->u.structure->tail == NULL)
+					{
+						return temp_type->u.structure->type;
+					}
+					else
+					{
+						printf("Error type 9 at Line %d: Too few arguments for function \"%s\".\n",child->lineno, child->data);
+						return NULL;
+					}
+				}
+				else
+				{
+					FieldListP args = temp_type->u.structure->tail;
+					if(args == NULL)
+					{
+						printf("Error type 9 at Line %d: Too many arguments for function \"%s\".\n", child->lineno, child->data);
+						return NULL;
+					}
+					char* function_name = child->data;
+					for(child = child->next->next->firstChild; ; )
+					{
+						TypeP child_type = visitExp(child);
+						if(child_type == NULL)
+							return NULL;
+						if(sameType(child_type, args->type) == false)
+						{
+							printf("Error type 9 at Line %d: Arguments type mismatch in function \"%s\".\n", child->lineno, function_name);
+							return NULL;
+						}
+						args = args->tail;
+						if(args == NULL && child->next != NULL)
+						{
+							printf("Error type 9 at Line %d: Too many arguments for function \"%s\".\n", child->lineno, function_name);
+							return NULL;
+						}
+						if(args != NULL && child->next == NULL)
+						{
+							printf("Error type 9 at Line %d: Too feq arguments for function \"%s\".\n", child->lineno, function_name);
+							return NULL;
+						}
+						if(args == NULL && child->next == NULL)
+							return temp_node->type->u.structure->type;
+						child = child->next->next->firstChild;
+					}
 
+				}
+			}
+		}
+		//Exp --> ID
+		else
+		{
+			TableNode* temp_node = searchSymbolTable(child->data);
+			if(temp_node == NULL)
+			{
+				printf("Error type 1 at Line %d: Undefined variable \"%s\".\n", child->lineno, child->data);
+				return NULL;
+			}
+			else
+			{
+				return temp_node->type;
+			}
+		}
 	}
 	else if(strcmp(child->name, "INT") == 0)
 	{
-
+		TypeP newtype = (TypeP)malloc(sizeof(Type_));
+		newtype->kind = BASIC;
+		newtype->u.basic = INT;
+		return newtype;
 	}
 	else if(strcmp(child->name, "FLOAT") == 0)
 	{
-
+		TypeP newtype = (TypeP)malloc(sizeof(Type_));
+		newtype->kind = BASIC;
+		newtype->u.basic = FLOAT;
+		return newtype;
 	}
 	else
 	{
@@ -431,20 +735,6 @@ bool sameType(TypeP type1, TypeP type2)
 	else
 		return false;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
