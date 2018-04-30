@@ -149,10 +149,6 @@ ExtDef : Specifier ExtDecList SEMI {
 	$$ = createTreeNode("ExtDef", @$.first_line, false);
 	insertTreeNode($$, 3, $1, $2, $3);
 }
-| Specifier FunDec SEMI {
-	$$ = createTreeNode("ExtDef", @$.first_line, false);
-	insertTreeNode($$, 3, $1, $2, $3);
-}
 | error SEMI {
 	;
 };
@@ -284,10 +280,6 @@ Stmt : Exp SEMI {
 | error SEMI {
 	;
 };
-
-
-
-
 
 
 /* Local Definitions */

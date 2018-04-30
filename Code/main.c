@@ -1,5 +1,7 @@
 #include "stdio.h"
 #include "TreeNode.h"
+#include "symbolTable.h"
+#include "semantic.h"
 
 extern FILE* yyin;
 extern void yyrestart(FILE *input);
@@ -20,6 +22,10 @@ int main(int argc, char** argv)
 	mylineno = 1;
 	yyparse();
 	if(!error_flag)
-		printTree(root, 1);
+	{
+		//printTree(root, 2);
+		initSymbolTable();
+		semanticTest(root);
+	}
 	return 0;
 }
