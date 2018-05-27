@@ -104,51 +104,51 @@ void writeInterCodes(char* filename)
 	{
 		switch(p->code.kind)
 		{
-			case LABEL:
+			case ILABEL:
 				fprintf(fp, "LABEL %s :\n", get_label_name(p->code.u.label->u.label_no));
 				break;
-			case FUNCTION:
-				fprintf(fp, "FUNCTION %s :\n", p->code.u.var_name);
+			case IFUNCTION:
+				fprintf(fp, "FUNCTION %s :\n", getOperandName(p->code.u.func));
 				break;
-			case ASSIGN:
+			case IASSIGN:
 				fprintf(fp, "%s := %s\n", getOperandName(p->code.u.assign.left), getOperandName(p->code.u.assign.right));
 				break;
-			case ADD:
-				fprinf(fp, "%s := %s + %s\n", getOperandName(p->code.u.binop.result), getOperandName(p->code.u.binop.op1), getOperandName(p->code.u.binop.op2));
+			case IADD:
+				fprintf(fp, "%s := %s + %s\n", getOperandName(p->code.u.binop.result), getOperandName(p->code.u.binop.op1), getOperandName(p->code.u.binop.op2));
 				break;
-			case SUB:
-				fprinf(fp, "%s := %s - %s\n", getOperandName(p->code.u.binop.result), getOperandName(p->code.u.binop.op1), getOperandName(p->code.u.binop.op2));
+			case ISUB:
+				fprintf(fp, "%s := %s - %s\n", getOperandName(p->code.u.binop.result), getOperandName(p->code.u.binop.op1), getOperandName(p->code.u.binop.op2));
 				break;
-			case MUL:
-				fprinf(fp, "%s := %s * %s\n", getOperandName(p->code.u.binop.result), getOperandName(p->code.u.binop.op1), getOperandName(p->code.u.binop.op2));
+			case IMUL:
+				fprintf(fp, "%s := %s * %s\n", getOperandName(p->code.u.binop.result), getOperandName(p->code.u.binop.op1), getOperandName(p->code.u.binop.op2));
 				break;
-			case DIV:
-				fprinf(fp, "%s := %s / %s\n", getOperandName(p->code.u.binop.result), getOperandName(p->code.u.binop.op1), getOperandName(p->code.u.binop.op2));
+			case IDIV:
+				fprintf(fp, "%s := %s / %s\n", getOperandName(p->code.u.binop.result), getOperandName(p->code.u.binop.op1), getOperandName(p->code.u.binop.op2));
 				break;
-			case GOTO:
+			case IGOTO:
 				fprintf(fp, "GOTO %s\n", get_label_name(p->code.u.go_to->u.label_no));
 				break;
-			case IFSTMT:
+			case IIFSTMT:
 				fprintf(fp, "IF %s %s %s GOTO %s\n", getOperandName(p->code.u.ifstmt.left), p->code.u.ifstmt.relop, getOperandName(p->code.u.ifstmt.right), getOperandName(p->code.u.ifstmt.label));
 				break;
-			case RETURN:
+			case IRETURN:
 				fprintf(fp, "RETURN %s\n", getOperandName(p->code.u.return_val));
 				break;
-			case DEC:
+			case IDEC:
 				fprintf(fp, "DEC %s %d\n", getOperandName(p->code.u.dec.left), p->code.u.dec.size);
 				break;
-			case ARG:
+			case IARG:
 				fprintf(fp, "ARG %s\n", getOperandName(p->code.u.arg));
 				break;
-			case CALL:
+			case ICALL:
 				fprintf(fp, "%s := CALL %s\n", getOperandName(p->code.u.callfunc.left), getOperandName(p->code.u.callfunc.right));
 				break;
-			case PARAM:
+			case IPARAM:
 				fprintf(fp, "PARAM %s\n", getOperandName(p->code.u.param));
-			case READ:
+			case IREAD:
 				fprintf(fp, "READ %s\n", getOperandName(p->code.u.read_val));
 				break;
-			case WRITE:
+			case IWRITE:
 				fprintf(fp, "Write %s\n", getOperandName(p->code.u.write_val));
 				break;
 			default:

@@ -167,7 +167,7 @@ void visitStmt(TreeNode* root, TypeP returntype)
 		visitStmt(child, returntype);
 		child = child->next;
 		if(child != NULL)
-			visitStmt(child, returntype);
+			visitStmt(child->next, returntype);
 	}
 	//Stmt --> WHILE LP Exp RP Stmt
 	else if(strcmp(child->name, "WHILE") == 0)

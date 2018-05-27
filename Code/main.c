@@ -2,6 +2,7 @@
 #include "TreeNode.h"
 #include "symbolTable.h"
 #include "semantic.h"
+#include "ir_generator.h"
 
 extern FILE* yyin;
 extern void yyrestart(FILE *input);
@@ -26,6 +27,10 @@ int main(int argc, char** argv)
 		//printTree(root, 2);
 		initSymbolTable();
 		semanticTest(root);
+		//printf("Begin ir generation\n");
+		if(argc >= 3)
+			generate_ir(argv[2]);
+
 	}
 	return 0;
 }

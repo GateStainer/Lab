@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "symbolTable.h"
+#include "type.h"
+#include "semantic.h"
 
 
 TableNode** symbolTable;
@@ -21,6 +23,34 @@ void initSymbolTable()
 {
 	symbolTable = (TableNode**)malloc(sizeof(TableNode*)*0x3fff);
 	memset(symbolTable, 0, sizeof(TableNode*)*0x3fff);
+
+	TypeP p1 = (TypeP)malloc(sizeof(Type_));
+	p1->kind = FUNCTION;
+	FieldListP q1 = (FieldListP)malloc(sizeof(FieldList_));
+	q1->name = "read";
+	q1->type = (TypeP)malloc(sizeof(Type_));
+	q1->type->kind = BASIC;
+	q1->type->u.basic = INT;
+	q1->tail = NULL;
+	p1->u.structure = q1;
+	insertSymbolTable("read", p1);
+
+	TypeP p2 = (TypeP)malloc(sizeof(Type_));
+	p2->kind = FUNCTION;
+	FieldListP q2 = (FieldListP)malloc(sizeof(FieldList_));
+	q2->name = "write";
+	q2->type = (TypeP)malloc(sizeof(Type_));
+	q2->type->kind = BASIC;
+	q2->type->u.basic = INT;
+	FieldListP q3 = (FieldListP)malloc(sizeof(FieldList_));
+	q3->name = NULL;
+	q3->type = (TypeP)malloc(sizeof(Type_));
+	q3->type->kind = BASIC;
+	q3->type->u.basic = INT;
+	q3->tail = NULL;
+	q2->tail = q3;
+	p2->u.structure = q2;
+	insertSymbolTable("write", p2);
 }
 
 TableNode* insertSymbolTable(char* name, TypeP type)

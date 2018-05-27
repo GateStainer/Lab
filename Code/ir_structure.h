@@ -18,7 +18,7 @@ typedef struct Operand_* Operand;
 
 struct InterCode
 {
-	enum {LABEL, FUNCTION, ASSIGN, ADD, SUB, MUL, DIV, GOTO, IFSTMT, RETURN, DEC, ARG, CALL, PARAM, READ, WRITE } kind;
+	enum {ILABEL, IFUNCTION, IASSIGN, IADD, ISUB, IMUL, IDIV, IGOTO, IIFSTMT, IRETURN, IDEC, IARG, ICALL, IPARAM, IREAD, IWRITE } kind;
 	union
 	{
 		Operand label;
@@ -27,7 +27,7 @@ struct InterCode
 		struct {Operand result, op1, op2; } binop;
 		Operand go_to;
 		struct {Operand left, right; char relop[3]; Operand label;} ifstmt;
-		Operand return_value;
+		Operand return_val;
 		struct {Operand left; int size;} dec;
 		Operand arg;
 		struct {Operand left, right;} callfunc;
