@@ -27,7 +27,6 @@ int main(int argc, char** argv)
 		//printTree(root, 2);
 		initSymbolTable();
 		semanticTest(root);
-		//printf("Begin ir generation\n");
 		if(argc >= 3)
 			generate_ir(argv[2]);
 

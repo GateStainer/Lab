@@ -48,7 +48,8 @@ char* get_label_name(int index)
 
 void generate_ir(char* filename)
 {
-	translate_Program(root);
+	ir_head = translate_Program(root);
+	printf("Complete translating the Program\n");
 	writeInterCodes(filename);
 }
 
@@ -91,7 +92,7 @@ InterCodes* translate_FunDec(TreeNode* root)
 	}
 	TreeNode* child = root->firstChild;
 	InterCodes* id_code = mallocInterCodes();
-	id_code->code.kind = FUNCTION;
+	id_code->code.kind = IFUNCTION;
 	Operand id_operand = mallocOperand(VARIABLE, child->data);
 	id_code->code.u.func = id_operand;
 	child = child->next->next;
@@ -151,22 +152,195 @@ InterCodes* translate_DefList(TreeNode* root)
 			if(vardec->next != NULL)
 			{
 				Operand place = mallocOperand(VARIABLE, vardec->firstChild->data);
-
-
+				Operand t1 = (Operand)malloc(sizeof(struct Operand_));
+				InterCodes* temp_code = translate_Exp(vardec->next->next, t1);
+				InterCodes* code2 = mallocInterCodes();
+				code2->code.kind = IASSIGN;
+				code2->code.u.assign.left = place;
+				code2->code.u.assign.right = t1;
+				deflist_code = mergeInterCodes(mergeInterCodes(deflist_code, temp_code), code2);
 			}
 			//VarDec --> VarDec LB INT RB
 			else if(strcmp(vardec->firstChild->name, "ID") != 0)
 			{
-
+				TreeNode* id = vardec->firstChild->firstChild;
+				TableNode* table = searchSymbolTable(id->data);
+				InterCodes* temp_code = mallocInterCodes();
+				temp_code->code.kind = IDEC;
+				temp_code->code.u.dec.left = mallocOperand(VARIABLE, id->data);
+				temp_code->code.u.dec.size = getSize(type);
+				deflist_code = mergeInterCodes(deflist_code, temp_code);
 			}
+			if(dec->next == NULL)
+				break;
+			else
+				dec = dec ->next->next->firstChild;
 		}
+		if(strcmp(child->next->name, "Empty") == 0)
+			break;
+		else
+			child = child->next->firstChild;
 	}
 	return deflist_code;
 }
 
 InterCodes* translate_StmtList(TreeNode* root)
 {
+	if(root == NULL || strcmp(root->name, "Empty") == 0)
+		return NULL;
+	else
+	{
+		TreeNode* stmt = root->firstChild;
+		return mergeInterCodes(translate_Stmt(stmt), translate_StmtList(stmt->next));
+	}
+}
 
+InterCodes* translate_Stmt(TreeNode* root)
+{
+	InterCodes* result = NULL;
+	TreeNode* child = root->firstChild;
+	if(strcmp(child->name, "Exp") == 0)
+	{
+		Operand place = (Operand)malloc(sizeof(struct Operand_));
+		return translate_Exp(child, place);
+	}
+	else if(strcmp(child->name, "CompSt") == 0)
+	{
+		printf("Reach CompSt!\n");
+	}
+	else if(strcmp(child->name, "RETURN") == 0)
+	{
+		Operand t1 = (Operand)malloc(sizeof(struct Operand_));
+		t1->kind = TEMP;
+		temp_index++;
+		t1->u.temp_no = temp_index;
+		InterCodes* code1 = translate_Exp(child->next, t1);
+		InterCodes* code2 = mallocInterCodes();
+		code2->code.kind = IRETURN;
+		code2->code.u.return_val = t1;
+		result = mergeInterCodes(code1, code2);
+	}
+	else if(strcmp(child->name, "IF") == 0)
+	{
+		TreeNode* stmt1 = child->next->next->next->next;
+		if(stmt1->next == NULL)
+		{
+			InterCodes* label1 = mallocInterCodes();
+			label1->code.kind = ILABEL;
+			Operand temp_l1 = (Operand)malloc(sizeof(struct Operand_));
+			temp_l1->kind = LABELNO;
+			label_index++;
+			temp_l1->u.label_no = label_index;
+			label1->code.u.label = temp_l1;	
+
+			InterCodes* label2 = mallocInterCodes();
+			label2->code.kind = ILABEL;
+			Operand temp_l2 = (Operand)malloc(sizeof(struct Operand_));
+			temp_l2->kind = LABELNO;
+			label_index++;
+			temp_l2->u.label_no = label_index;
+			label2->code.u.label = temp_l2;
+
+			InterCodes* code1 = translate_Cond(child->next->next, label1, label2);
+			InterCodes* code2 = translate_Stmt(stmt1);
+			result = mergeInterCodes(code1, label1);
+			result = mergeInterCodes(result, code2);
+			result = mergeInterCodes(result, label2);
+		}
+		else
+		{
+			InterCodes* label1 = mallocInterCodes();
+			label1->code.kind = ILABEL;
+			Operand temp_l1 = (Operand)malloc(sizeof(struct Operand_));
+			temp_l1->kind = LABELNO;
+			label_index++;
+			temp_l1->u.label_no = label_index;
+			label1->code.u.label = temp_l1;
+
+			InterCodes* label2 = mallocInterCodes();
+			label2->code.kind = ILABEL;
+			Operand temp_l2 = (Operand)malloc(sizeof(struct Operand_));
+			temp_l2->kind = LABELNO;
+			label_index++;
+			temp_l2->u.label_no = label_index;
+			label2->code.u.label = temp_l2;
+
+			InterCodes* label3 = mallocInterCodes();	
+			label3->code.kind = ILABEL;
+			Operand temp_l3 = (Operand)malloc(sizeof(struct Operand_));
+			temp_l3->kind = LABELNO;
+			label_index++;
+			temp_l3->u.label_no = label_index;
+			label3->code.u.label = temp_l3;
+
+			InterCodes* goto_code = mallocInterCodes();
+			goto_code->code.kind = IGOTO;
+			Operand temp_ll = (Operand)malloc(sizeof(struct Operand_));
+			temp_ll->kind = LABELNO;
+			temp_ll->u.label_no = label_index;
+			goto_code->code.u.go_to = temp_ll;
+
+			InterCodes* code1 = translate_Cond(child->next->next, label1, label2);
+			InterCodes* code2 = translate_Stmt(stmt1);
+			TreeNode* stmt2 = stmt1->next->next;
+			InterCodes* code3 = translate_Stmt(stmt2);
+			result = mergeInterCodes(code1, label1);
+			result = mergeInterCodes(result, code2);
+			result = mergeInterCodes(result, goto_code);
+			result = mergeInterCodes(result, label2);
+			result = mergeInterCodes(result, code3);
+			result = mergeInterCodes(result, label3);
+		}
+	}
+	else if(strcmp(child->name, "WHILE") == 0)
+	{
+		InterCodes* label1 = mallocInterCodes();
+		label1->code.kind = ILABEL;
+		Operand temp_l1 = (Operand)malloc(sizeof(struct Operand_));
+		temp_l1->kind = LABELNO;
+		label_index++;
+		temp_l1->u.label_no = label_index;
+		label1->code.u.label = temp_l1;
+
+		InterCodes* label2 = mallocInterCodes();
+		label2->code.kind = ILABEL;
+		Operand temp_l2 = (Operand)malloc(sizeof(struct Operand_));
+		temp_l2->kind = LABELNO;
+		label_index++;
+		temp_l2->u.label_no = label_index;
+		label2->code.u.label = temp_l2;
+
+		InterCodes* label3 = mallocInterCodes();
+		label3->code.kind = ILABEL;
+		Operand temp_l3 = (Operand)malloc(sizeof(struct Operand_));
+		temp_l3->kind = LABELNO;
+		label_index++;
+		temp_l3->u.label_no = label_index;
+		label3->code.u.label = temp_l3;
+
+		TreeNode* exp = child->next->next;
+		InterCodes* code1 = translate_Cond(exp, label2, label3);
+		InterCodes* code2 = translate_Stmt(exp->next->next);
+
+		InterCodes* goto_code = mallocInterCodes();
+		goto_code->code.kind = IGOTO;
+		Operand temp_ll = (Operand)malloc(sizeof(struct Operand_));
+		temp_ll->kind = LABELNO;
+		temp_ll->u.label_no = label_index-2;
+		goto_code->code.u.go_to = temp_ll;
+
+		result = mergeInterCodes(label1, code1);
+		result = mergeInterCodes(result, label2);
+		result = mergeInterCodes(result, code2);
+		result = mergeInterCodes(result, goto_code);
+		result = mergeInterCodes(result, label3);
+	}
+	else
+	{
+		printf("Unexpected node in translate_Stmt()!\n");
+		exit(-1);
+	}
+	return result;
 }
 
 //Args --> Exp COMMA Args | Exp
@@ -246,6 +420,18 @@ InterCodes* translate_Exp(TreeNode* root, Operand place)
 				}
 				if(strcmp(child->data, "write") == 0)
 				{
+					/*InterCodes* mid_code = mallocInterCodes();
+					mid_code->code.kind = IASSIGN;
+					Operand temp = (Operand)malloc(sizeof(struct Operand_));
+					temp->kind = VARIABLE;
+					char* temp_var = (char*)malloc(32);
+					temp_var[0] = 'v';
+					temp_var[1] = 'v';
+					temp_var[2] = 'v';
+					temp_var[3] = '\0';
+					temp->u.var_name = temp_var;
+					mid_code->code.u.assign.left = temp;
+					mid_code->code.u.assign.right = arg_list->next->operand;*/
 					exp_code->code.kind = IWRITE;
 					exp_code->code.u.write_val = arg_list->next->operand;
 					return mergeInterCodes(code1, exp_code);
@@ -267,7 +453,7 @@ InterCodes* translate_Exp(TreeNode* root, Operand place)
 					InterCodes* code_temp = mallocInterCodes();
 					code_temp->code.kind = ICALL;
 					code_temp->code.u.callfunc.left = new_temp;
-					Operand callfunc_right = mallocOperand(VARIABLE, child->name);
+					Operand callfunc_right = mallocOperand(VARIABLE, child->data);
 					code_temp->code.u.callfunc.right = callfunc_right;
 
 					InterCodes* code3 = mallocInterCodes();
@@ -470,7 +656,94 @@ InterCodes* translate_Exp(TreeNode* root, Operand place)
 
 InterCodes* translate_Cond(TreeNode* root, InterCodes* label1, InterCodes* label2)
 {
+	TreeNode* exp1 = root->firstChild;
+	TreeNode* op = exp1->next;
+	if(strcmp(op->name, "RELOP") == 0)
+	{
+		Operand t1 = (Operand)malloc(sizeof(struct Operand_));
+		t1->kind = TEMP;
+		temp_index++;
+		t1->u.temp_no = temp_index;
+		Operand t2 = (Operand)malloc(sizeof(struct Operand_));
+		t2->kind = TEMP;
+		temp_index++;
+		t2->u.temp_no = temp_index;
 
+		InterCodes* code1 = translate_Exp(exp1, t1);
+		InterCodes* code2 = translate_Exp(op->next, t2);
+
+		InterCodes* code3 = mallocInterCodes();
+		code3->code.kind = IIFSTMT;
+		strcpy(code3->code.u.ifstmt.relop, op->data);
+		code3->code.u.ifstmt.left = t1;
+		code3->code.u.ifstmt.right = t2;
+		code3->code.u.ifstmt.label = label1->code.u.label;
+
+		InterCodes* code4 = mallocInterCodes();
+		code4->code.kind = IGOTO;
+		code4->code.u.go_to = label2->code.u.label;
+
+		return mergeInterCodes(mergeInterCodes(mergeInterCodes(code1, code2), code3), code4);
+	}
+	else if(strcmp(exp1->name, "NOT") == 0)
+	{
+		return translate_Cond(exp1->next, label2, label1);
+	}
+	else if(strcmp(op->name, "AND") == 0)
+	{
+		InterCodes* temp_label = mallocInterCodes();
+		temp_label->code.kind = ILABEL;
+		label_index++;
+		Operand temp_ll = (Operand)malloc(sizeof(struct Operand_));
+		temp_ll->kind = LABELNO;
+		temp_ll->u.label_no = label_index;
+		temp_label->code.u.label = temp_ll;
+		InterCodes* code1 = translate_Cond(exp1, temp_label, label2);
+		InterCodes* code2 = translate_Cond(op->next, label1, label2);
+		return mergeInterCodes(mergeInterCodes(code1, temp_label), code2);
+	}
+	else if(strcmp(op->name, "OR") == 0)
+	{
+		InterCodes* temp_label = mallocInterCodes();
+		temp_label->code.kind = ILABEL;
+		label_index++;
+		Operand temp_ll = (Operand)malloc(sizeof(struct Operand_));
+		temp_ll->kind = LABELNO;
+		temp_ll->u.label_no = label_index;
+		temp_label->code.u.label = temp_ll;
+		InterCodes* code1 = translate_Cond(exp1, label1, temp_label);
+		InterCodes* code2 = translate_Cond(op->next, label1, label2);
+		return mergeInterCodes(mergeInterCodes(code1, temp_label), code2);
+	}
+	else
+	{
+		Operand t1 = (Operand)malloc(sizeof(struct Operand_));
+		t1->kind = TEMP;
+		temp_index++;
+		t1->u.temp_no = temp_index;
+		Operand t2 = (Operand)malloc(sizeof(struct Operand_));
+		t2->kind = CONSTANT;
+		t2->u.value = 0;
+
+		InterCodes* code1 = translate_Exp(root, t1);
+		InterCodes* code2 = mallocInterCodes();
+		code2->code.kind = IIFSTMT;
+		code2->code.u.ifstmt.relop[0] = '!';
+		code2->code.u.ifstmt.relop[1] = '=';
+		code2->code.u.ifstmt.relop[2] = '\0';
+		code2->code.u.ifstmt.left = t1;
+		code2->code.u.ifstmt.right = t2;
+		Operand temp_ll = (Operand)malloc(sizeof(struct Operand_));
+		temp_ll->kind = LABELNO;
+		temp_ll->u.label_no = label1->code.u.label->u.label_no;;
+		code2->code.u.ifstmt.label = temp_ll;
+
+		InterCodes* code3 = mallocInterCodes();
+		code3->code.kind = IGOTO;
+		code3->code.u.go_to = label2->code.u.label;
+		return mergeInterCodes(mergeInterCodes(code1, code2), code3);
+ 
+	}
 }
 
 

@@ -149,7 +149,7 @@ void writeInterCodes(char* filename)
 				fprintf(fp, "READ %s\n", getOperandName(p->code.u.read_val));
 				break;
 			case IWRITE:
-				fprintf(fp, "Write %s\n", getOperandName(p->code.u.write_val));
+				fprintf(fp, "WRITE %s\n", getOperandName(p->code.u.write_val));
 				break;
 			default:
 				printf("Unexpected kind in writeInterCodes()\n");

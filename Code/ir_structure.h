@@ -46,8 +46,8 @@ struct InterCodes
 };
 typedef struct InterCodes InterCodes;
 
-extern InterCodes* head;
-extern InterCodes* tail;
+extern InterCodes* ir_head;
+extern InterCodes* ir_tail;
 
 struct ArgListNode
 {
