@@ -12,6 +12,7 @@ InterCodes* ir_tail = NULL;
 char* getOperandName(Operand operand)
 {
 	char* result = NULL;
+	//printf("%d\n", operand->kind);
 	switch(operand->kind)
 	{
 		case VARIABLE: return operand->u.var_name;
@@ -23,7 +24,7 @@ char* getOperandName(Operand operand)
 		case ADDRESS:
 			result = (char*)malloc(32);
 			result[0] = '*';
-			strcpy(result+1, operand->u.addr_name);
+			strcpy(result+1, get_temp_name(operand->u.temp_no));
 			return result;
 		case REFERENCE: 
 			result = (char*)malloc(32);
@@ -145,6 +146,7 @@ void writeInterCodes(char* filename)
 				break;
 			case IPARAM:
 				fprintf(fp, "PARAM %s\n", getOperandName(p->code.u.param));
+				break;
 			case IREAD:
 				fprintf(fp, "READ %s\n", getOperandName(p->code.u.read_val));
 				break;

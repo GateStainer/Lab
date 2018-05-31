@@ -110,6 +110,7 @@ InterCodes* translate_FunDec(TreeNode* root)
 			InterCodes* temp_code = mallocInterCodes();
 			temp_code->prev = tail;
 			tail->next = temp_code;
+			tail = temp_code;
 			temp_code->code.kind = IPARAM;
 			Operand temp_operand = mallocOperand(VARIABLE, temp_node->data);
 			temp_code->code.u.param = temp_operand;
@@ -139,7 +140,7 @@ InterCodes* translate_DefList(TreeNode* root)
 	InterCodes* deflist_code = NULL;
 	TreeNode* child = root->firstChild;
 	while(true)
-	{
+	{ 
 		//Def --> Specifier DecList SEMI
 		TreeNode* dec = child->firstChild->next->firstChild;
 		TreeNode* specifier = child->firstChild;
@@ -163,12 +164,18 @@ InterCodes* translate_DefList(TreeNode* root)
 			//VarDec --> VarDec LB INT RB
 			else if(strcmp(vardec->firstChild->name, "ID") != 0)
 			{
-				TreeNode* id = vardec->firstChild->firstChild;
-				TableNode* table = searchSymbolTable(id->data);
+				TreeNode* id = vardec;
+				int size = getSize(type);
+				while(strcmp(id->name, "ID") != 0)
+				{
+					id = id->firstChild;
+					if(strcmp(id->name, "ID") != 0)
+						size *= atoi(id->next->next->data);
+				}
 				InterCodes* temp_code = mallocInterCodes();
 				temp_code->code.kind = IDEC;
 				temp_code->code.u.dec.left = mallocOperand(VARIABLE, id->data);
-				temp_code->code.u.dec.size = getSize(type);
+				temp_code->code.u.dec.size = size;
 				deflist_code = mergeInterCodes(deflist_code, temp_code);
 			}
 			if(dec->next == NULL)
@@ -206,7 +213,7 @@ InterCodes* translate_Stmt(TreeNode* root)
 	}
 	else if(strcmp(child->name, "CompSt") == 0)
 	{
-		printf("Reach CompSt!\n");
+		result = translate_CompSt(child);
 	}
 	else if(strcmp(child->name, "RETURN") == 0)
 	{
